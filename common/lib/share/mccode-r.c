@@ -4538,7 +4538,7 @@ mchelp(char *pgmname)
 "\n"
 #endif
 #ifdef TOF_TRAIN
-"  --tof-trains=K             Number of TOF \"sub-particles\" (default 10)\n"
+"  --tof-trains=K             Number of TOF \"sub-particles\" (default 100)\n"
 #endif
 "\n"
 "  --bufsiz                   Monitor_nD list/buffer-size (default: 1000000)\n"
@@ -4841,7 +4841,7 @@ mcparseoptions(int argc, char *argv[])
       NTOF=atoi(&argv[i][13]);
       #ifdef NTOF_GPU_STATIC
       if (NTOF>NTOF_GPU_STATIC) {
-	fprintf(stderr, "WARNING: Instrument was compiled with -DNTOF_GPU_STATIC=%i, reducing to --tof-trains=%i\n");
+	fprintf(stderr, "WARNING: Instrument was compiled with -DNTOF_GPU_STATIC=%i, reducing to --tof-trains=%i\n", NTOF_GPU_STATIC, NTOF_GPU_STATIC);
 	NTOF=NTOF_GPU_STATIC;
       }
       #endif

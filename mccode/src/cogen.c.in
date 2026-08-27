@@ -1644,7 +1644,7 @@ void def_trace_section(struct instr_def *instr)
   cout("#define N_trains (_particle->N_trains)");
   cout("#define t_offset (_particle->t_offset)");
   cout("#define p_trains (_particle->p_trains)");
-  cout("#define alive_trains (_particle->alive_trains)");
+  cout("#define N_active (_particle->N_active)");
   cout("#define P_last_time_manipulation (_particle->P_last_time_manipulation)");
   cout("#endif /* OPENACC */");
   cout("#endif /* TOF_TRAIN */");
@@ -1707,7 +1707,7 @@ void undef_trace_section(struct instr_def *instr)
   cout("#ifdef TOF_TRAIN");
   cout("#undef t_offset");
   cout("#undef p_trains");
-  cout("#undef alive_trains");
+  cout("#undef N_active");
   cout("#undef P_last_time_manipulation");
   cout("#endif /* TOF_TRAIN */");
   cout("#endif /* OPENACC */");
@@ -2036,7 +2036,6 @@ int cogen_raytrace(struct instr_def *instr)
   cout("  #ifndef NTOF_GPU_STATIC");
   cout("  if (t_offset) free(t_offset);");
   cout("  if (p_trains) free(p_trains);");
-  cout("  if (alive_trains) free(alive_trains);");
   cout("  #endif");
   cout("  #endif");
   cout("  #endif");
@@ -2126,7 +2125,6 @@ int cogen_raytrace(struct instr_def *instr)
   cout("      #ifdef TOF_TRAIN");
   cout("      if (t_offset) free(t_offset);");
   cout("      if (p_trains) free(p_trains);");
-  cout("      if (alive_trains) free(alive_trains);");
   cout("      #endif");
   cout("      #endif");
   cout("      #endif");
@@ -2499,14 +2497,13 @@ cogen_header(struct instr_def *instr, char *output_name)
   cout("/* ON CPU, these are also global: */");
   cout("#ifndef OPENACC");
   cout("int N_trains; /* initialised like e.g. ncount, seed from cmdline */");
+  cout("int N_active;");
   cout("#ifndef NTOF_GPU_STATIC");
   cout("double *t_offset;");
   cout("double *p_trains;");
-  cout("int *alive_trains;");
   cout("#else");
   cout("double t_offset[NTOF_GPU_STATIC];");
   cout("double p_trains[NTOF_GPU_STATIC];");
-  cout("int alive_trains[NTOF_GPU_STATIC];");
   cout("#endif");
   cout("double P_last_time_manipulation;");
   cout("#endif");
@@ -2571,9 +2568,9 @@ cogen_header(struct instr_def *instr, char *output_name)
   cout("  #ifdef OPENACC");
   cout("  #ifdef TOF_TRAIN");
   cout("  int N_trains; /* initialised like e.g. ncount, seed from cmdline */");
+  cout("  int N_active;");
   cout("  double *t_offset;");
   cout("  double *p_trains;");
-  cout("  int *alive_trains;");
   cout("  double P_last_time_manipulation;");
   cout("  #endif /* TOF_TRAIN */");
   cout("  #endif /* OPENACC */");
@@ -2678,6 +2675,12 @@ cogen_header(struct instr_def *instr, char *output_name)
 #elif MCCODE_PROJECT == 2   /* xray */
   cout("  _class_particle particle = mcsetstate(0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, mcgravitation, NULL);");
 #endif
+  cout("  #ifdef TOF_TRAIN");
+  cout("  #ifndef OPENACC");
+  cout("  N_active = 0;");
+  cout("  P_last_time_manipulation = 0;");
+  cout("  #endif");
+  cout("  #endif");
   cout("  return(particle);");
   cout("}");
 

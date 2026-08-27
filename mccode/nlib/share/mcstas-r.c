@@ -87,8 +87,9 @@ _class_particle mcsetstate(double x, double y, double z, double vx, double vy, d
   mcneutron.N_trains=NTOF;
   mcneutron.t_offset=malloc(NTOF*sizeof(double));
   mcneutron.p_trains=malloc(NTOF*sizeof(double));
-  mcneutron.alive_trains=malloc(NTOF*sizeof(int));
 #endif /* NTOF_GPU_STATIC */
+  mcneutron.N_active = 0;
+  mcneutron.P_last_time_manipulation = 0;
   #endif /* OPENACC */
   #endif /* TOF_TRAIN */
 
