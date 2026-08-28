@@ -7,9 +7,14 @@
 * Date: 26th March 2020
 * Origin: ESS
 *
-* %INSTRUMENT_SITE: ESS
-* Vertical bender is not 3D but 2D and therefore m values on the side of the guides are equal for lefty and right - use the highest value. 
-************************************************************************/
+ * %INSTRUMENT_SITE: ESS
+ * Vertical bender is not 3D but 2D and therefore m values on the side of the guides are equal for lefty and right - use the highest value.
+ *
+ * Prototype copy driven by the TOF-train mechanism (mcrun --tof-trains=K),
+ * see ODIN_wfm.instr in this directory for details.
+ *
+ * %Example: lambda_min=3 Detector: tof_I=4.55994e+07
+ ************************************************************************/
  
  DEFINE INSTRUMENT CSPEC(lambda_min=3, dist_focus=1.9, AC_Power=2,
  move_x=0.0163,

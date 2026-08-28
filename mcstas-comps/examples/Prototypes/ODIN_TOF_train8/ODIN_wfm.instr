@@ -19,12 +19,20 @@
 * Origin: ESS DMSC
 * %INSTRUMENT_SITE: Generated_instruments
 * 
-* !!Please write a short instrument description (1 line) here!!
-* 
-* %Description
-* Please write a longer instrument description here!
-* 
-* 
+ * Prototype of the ODIN WFM mode driven by the TOF-train mechanism
+ * (mcrun --tof-trains=K), see TOF_trains-lib.h and the sibling train7 prototype.
+ *
+ * %Description
+ * ODIN white-beam-mode (WFM) prototype using the TOF-train sub-particle model.
+ * The source emits one neutron per pulse carrying N_trains time offsets
+ * (neutron sub-trains); choppers (DiskChopper/MultiDiskChopper) manipulate the
+ * trains and the monitors (TOF_monitor, Monitor_nD) read them out.
+ *
+ * Run from inside this directory so the prototype components are found, e.g.
+ *   mcrun -y ODIN_wfm.instr -n 1e6 --tof-trains=10
+ *
+ * %Example: choppers=2 Detector: tof_I=9.02117e+08
+ *
 * %Parameters
 * l_min: [unit] Minimum simulated wavelength [AA]
 * l_max: [unit] Maximum simulated wavelength [AA]
@@ -146,7 +154,6 @@ INITIALIZE
 %}
 
 TRACE 
-SEARCH "/Users/madsbertelsen/McStas/ESS/ODIN/gitlab/odin/odin_sim/required_mcstas_components"
 COMPONENT Origin = Progress_bar()
 AT (0, 0, 0) ABSOLUTE
 
