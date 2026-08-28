@@ -265,6 +265,11 @@ class McStas:
         if self.options.D3 is not None:
             cflags += self.options.D3 + " "       
 
+        # The runtime only exposes --tof-trains when the train support is
+        # compiled in. This is a CLI feature, not a component dependency.
+        if self.options.tof_trains is not None:
+            cflags += "-DTOF_TRAIN "
+
         # Add "standard CFLAGS" or "no CFLAGS" if not openacc
         if not self.options.openacc:
             cflags += options.no_cflags and ['-O0'] + " " or mccode_config.compilation['CFLAGS'] + " " # cflags
