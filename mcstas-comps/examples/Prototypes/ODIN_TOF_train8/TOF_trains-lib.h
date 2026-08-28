@@ -7,7 +7,12 @@
  * Pure #defines only: safe to %include from a component SHARE section
  * because expansion happens inside TRACE, where cogen's TOF_TRAIN
  * defines (bare names -> _particle members on GPU) are active.
+ *
+ * When TOF_TRAIN is not defined, the macros reduce to the original
+ * single-neutron behavior.
  */
+
+#ifdef TOF_TRAIN
 
 #define T_ABSORB()   do { WT_absorb_ = 1; } while (0)
 #define T_TRANSMIT() do { WT_absorb_ = 0; } while (0)
@@ -40,7 +45,7 @@ do {                                                                            
 	if (!N_active) ABSORB;                                                                 \
 	p = P_last_time_manipulation;                                                          \
 	t = t_original;                                                                        \
-} while (0)
+ } while (0)
 
 #define TRAIN_READ(BODY_CODE)                                                              \
 do {                                                                                       \
@@ -56,6 +61,15 @@ do {                                                                            
         BODY_CODE                                                                          \
                                                                                         \
     }                                                                                      \
-  	p = p_original;                                                                        \
-  	t = t_original;                                                                        \
+  p = p_original;                                                                        \
+  t = t_original;                                                                        \
 } while (0)
+
+#else /* TOF_TRAIN not defined */
+
+#define T_ABSORB() ABSORB
+#define T_TRANSMIT() do { } while (0)
+#define TRAIN_GATE(BODY_CODE) BODY_CODE
+#define TRAIN_READ(BODY_CODE) BODY_CODE
+
+#endif /* TOF_TRAIN */

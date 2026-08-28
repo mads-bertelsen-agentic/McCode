@@ -54,8 +54,23 @@ SETTING PARAMETERS ( int nowritefile=0,
   xwidth=0, yheight=0, Lmin, Lmax,
   int restore_neutron=0)
 
-
 /* Neutron parameters: (x,y,z,vx,vy,vz,t,sx,sy,sz,p) */
+
+SHARE
+%{
+  %include "TOF_trains-lib.h"
+
+  void
+  save_ray_TOFLambda (double p, int i, int j, double** TOFL_N, double** TOFL_p, double** TOFL_p2) {
+    double p2 = p * p;
+    #pragma acc atomic
+    TOFL_N[j][i] = TOFL_N[j][i] + 1;
+    #pragma acc atomic
+    TOFL_p[j][i] = TOFL_p[j][i] + p;
+    #pragma acc atomic
+    TOFL_p2[j][i] = TOFL_p2[j][i] + p2;
+  }
+%}
 
 DECLARE
 %{
@@ -104,19 +119,11 @@ TRACE
   PROP_Z0;
   lambda = (2 * PI / V2K) / sqrt (vx * vx + vy * vy + vz * vz);
   if (x > xmin && x < xmax && y > ymin && y < ymax && lambda > Lmin && lambda < Lmax) {
-    if (t < tt_1 && t > tt_0) {
+    TRAIN_READ (if (t < tt_1 && t > tt_0) {
       i = floor ((lambda - Lmin) * nL / (Lmax - Lmin));
       j = floor ((t - tt_0) * nt / (tt_1 - tt_0));
-      /*  printf("tt_0, tt_1, nt %g %g %i t j %g %i \n",tt_0,tt_1,nt,t,j);
-       */
-      double p2 = p * p;
-      #pragma acc atomic
-      TOFL_N[j][i] = TOFL_N[j][i] + 1;
-      #pragma acc atomic
-      TOFL_p[j][i] = TOFL_p[j][i] + p;
-      #pragma acc atomic
-      TOFL_p2[j][i] = TOFL_p2[j][i] + p2;
-    }
+      save_ray_TOFLambda (p, i, j, TOFL_N, TOFL_p, TOFL_p2);
+    });
   }
   if (restore_neutron) {
     RESTORE_NEUTRON (INDEX_CURRENT_COMP, x, y, z, vx, vy, vz, t, sx, sy, sz, p);

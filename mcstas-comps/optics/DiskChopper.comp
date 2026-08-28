@@ -68,8 +68,12 @@ DEFINE COMPONENT DiskChopper
 
 SETTING PARAMETERS (theta_0=0, radius=0.5, yheight, nu, nslit=3, jitter=0, delay=0, isfirst=0, n_pulse=1, abs_out=1, phase=0, xwidth=0, verbose=0)
 
-
 /* Neutron parameters: (x,y,z,vx,vy,vz,t,sx,sy,sz,p) */
+
+SHARE
+%{
+  %include "TOF_trains-lib.h"
+%}
 
 DECLARE
 %{
@@ -168,11 +172,8 @@ TRACE
     /* correction: chopper slits transmission opening/full disk */
     p *= nslit * theta_0 / 2.0 / PI;
   } else {
-    toff = fabs (t - atan2 (x, yprime) / omega - delay - (jitter ? jitter * randnorm () : 0));
-
-    /* does neutron hit outside slit? */
-    if (fmod (toff + To / 2.0, Tg) > To)
-      ABSORB;
+    double jitter_value = (jitter ? jitter * randnorm () : 0);
+    TRAIN_GATE (toff = fabs (t - atan2 (x, yprime) / omega - delay - jitter_value); if (fmod (toff + To / 2.0, Tg) > To) { T_ABSORB (); });
   }
   SCATTER;
 %}

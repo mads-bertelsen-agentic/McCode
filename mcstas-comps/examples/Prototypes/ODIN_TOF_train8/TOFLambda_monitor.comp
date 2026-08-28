@@ -54,8 +54,6 @@ SETTING PARAMETERS ( int nowritefile=0,
   xwidth=0, yheight=0, Lmin, Lmax,
   int restore_neutron=0)
 
-DEPENDENCY " -DTOF_TRAIN "
-
 /* Neutron parameters: (x,y,z,vx,vy,vz,t,sx,sy,sz,p) */
 	  
 	  SHARE

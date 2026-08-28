@@ -72,6 +72,14 @@ double ESS_2015_Schoenfeldt_thermal_spectrum(double lambda, double theta);
 /* List of brilliance definitions */
 void ESS_2015_Schoenfeldt_cold(double *t, double *p, double lambda, double tfocus_w, double tfocus_t, double tfocus_dt, double height_t, double Mwidth_t, double height_c, double Mwidth_c, double tmultiplier, double beamportangle, double X, double Y);
 void ESS_2015_Schoenfeldt_thermal(double *t, double *p, double lambda, double tfocus_w, double tfocus_t, double tfocus_dt, double height_t, double Mwidth_t, double height_c, double Mwidth_c, double tmultiplier, double beamportangle, double X, double Y);
+
+/* TOF_TRAIN: t-independent parts of the brilliance definitions
+ * (the time distribution is applied per sub-train by the source) */
+#ifdef TOF_TRAIN
+void ESS_2015_Schoenfeldt_cold_no_t(double *t, double *p, double lambda, double tfocus_w, double tfocus_t, double tfocus_dt, double height_t, double Mwidth_t, double height_c, double Mwidth_c, double tmultiplier, double beamportangle, double X, double Y);
+void ESS_2015_Schoenfeldt_thermal_no_t(double *t, double *p, double lambda, double tfocus_w, double tfocus_t, double tfocus_dt, double height_t, double Mwidth_t, double height_c, double Mwidth_c, double tmultiplier, double beamportangle, double X, double Y);
+#endif /* TOF_TRAIN */
+
 /* List of pulse-shape definitions */
 double ESS_2015_Schoenfeldt_cold_timedist(double t, double lambda, double height, double pulselength);
 double ESS_2015_Schoenfeldt_thermal_timedist(double t, double lambda, double height, double pulselength);

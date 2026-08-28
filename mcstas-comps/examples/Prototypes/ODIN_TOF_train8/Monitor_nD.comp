@@ -240,8 +240,6 @@ SETTING PARAMETERS (
   int tsplit=0, int adaptive_target=0
  )
 
-DEPENDENCY " -DTOF_TRAIN "
-
 /* these are protected C variables */
 
 /* Neutron parameters: (x,y,z,vx,vy,vz,t,sx,sy,sz,p) */
@@ -252,6 +250,41 @@ SHARE
   %include "monitor_nd-lib"
   %include "read_table-lib"
   %include "interoff-lib"
+
+  #ifdef TOF_TRAIN
+  #define MONITOR_ND_RECORD()                                                                                 \
+    do {                                                                                                      \
+      if (adaptive_target) {                                                                                  \
+        total_N_sent += adaptive_N;                                                                           \
+        total_rays_sent++;                                                                                    \
+      }                                                                                                       \
+      int pp_all_zero = 1;                                                                                    \
+      if (tsplit == 1) {                                                                                      \
+        TRAIN_READ (pp = Monitor_nD_Trace (&DEFS, &Vars, _particle); if (pp) pp_all_zero = 0;                 \
+                    if (adaptive_target) total_arrived++;);                                                  \
+        if (pp_all_zero)                                                                                      \
+          ABSORB;                                                                                             \
+        else                                                                                                  \
+          SCATTER;                                                                                            \
+      } else {                                                                                                \
+        pp = Monitor_nD_Trace (&DEFS, &Vars, _particle);                                                      \
+        if (pp == 0.0)                                                                                        \
+          ABSORB;                                                                                             \
+        else if (pp == 1)                                                                                     \
+          SCATTER;                                                                                            \
+      }                                                                                                       \
+    } while (0)
+  #else
+  #define MONITOR_ND_RECORD()                                                                                 \
+    do {                                                                                                      \
+      pp = Monitor_nD_Trace (&DEFS, &Vars, _particle);                                                        \
+      if (pp == 0.0) {                                                                                        \
+        ABSORB;                                                                                               \
+      } else if (pp == 1) {                                                                                   \
+        SCATTER;                                                                                              \
+      }                                                                                                       \
+    } while (0)
+  #endif
 %}
 
 DECLARE
@@ -570,38 +603,7 @@ TRACE
       p = p * multiplier_capture / 1.7985;
     }
 
-    if (adaptive_target) {
-      total_N_sent += adaptive_N;
-      total_rays_sent++;
-    }
-
-    /*
-        int train_index;
-        double p_original = p;
-        double p_factor = p/_particle->p_last_time_manipulation;
-        double t_original = t;
-        */
-
-    int pp_all_zero = 1;
-
-    if (tsplit == 1) {
-
-      TRAIN_READ (pp = Monitor_nD_Trace (&DEFS, &Vars, _particle); if (pp) pp_all_zero = 0; if (adaptive_target) total_arrived++;);
-
-      if (pp_all_zero)
-        ABSORB;
-      else
-        SCATTER;
-
-    } else {
-
-      pp = Monitor_nD_Trace (&DEFS, &Vars, _particle);
-      if (pp == 0.0) {
-        ABSORB;
-      } else if (pp == 1) {
-        SCATTER;
-      }
-    }
+    MONITOR_ND_RECORD ();
 
     /*set weight to undetected part if capture and/or he3_pressure*/
     if (Vars.He3_pressure > 0) {

@@ -71,6 +71,10 @@ DEFINE COMPONENT MultiDiskChopper
 
 SETTING PARAMETERS (string slit_center="0 180", string slit_width="10 20", nslits=2, delta_y=-0.3, nu=0, nrev=0, ratio=1, jitter=0, delay=0, isfirst=0, phase=0, radius = 0.375, equal=0, abs_out=0, verbose=0)
 
+SHARE
+%{
+  %include "TOF_trains-lib.h"
+%}
 
 DECLARE
 %{
@@ -279,20 +283,15 @@ TRACE
       t += t0[islit] - atan2 (xprime, yprime) / omega + irev * T + (jitter ? jitter * randnorm () : 0);
 
     } else {
-
-      // where does the neutron hit the disk ?
-      phi = atan2 (xprime, yprime) + omega * (t - delay - (jitter ? jitter * randnorm () : 0));
-
-      // does the neutron hit one of the slits ?
-      islit = 0;
-      while (islit < nslits && !SCATTERED) {
-        if (fabs (remainder (phi - dslit_center[islit], 2 * PI)) < dhslit_width[islit])
-          SCATTER;
-
-        islit++;
-      }
-      if (!SCATTERED)
-        ABSORB;
+      int this_t_hit;
+      TRAIN_GATE (phi = atan2 (xprime, yprime) + omega * (t - delay - (jitter ? jitter * randnorm () : 0)); this_t_hit = 0; islit = 0;
+                  // does the neutron hit one of the slits ?
+                  while (islit < nslits && !this_t_hit) {
+                    if (fabs (remainder (phi - dslit_center[islit], 2 * PI)) < dhslit_width[islit]) {
+                      this_t_hit = 1;
+                    }
+                    islit++;
+                  } if (this_t_hit == 0) T_ABSORB (););
     }
   }
 %}

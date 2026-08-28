@@ -52,6 +52,22 @@ SETTING PARAMETERS (int nt=20, string filename=0, xmin=-0.05, xmax=0.05, ymin=-0
 
 /* Neutron parameters: (x,y,z,vx,vy,vz,t,sx,sy,sz,p) */
 
+SHARE
+%{
+  %include "TOF_trains-lib.h"
+
+  void
+  save_ray (double p, int i, double* TOF_N, double* TOF_p, double* TOF_p2) {
+    double p2 = p * p;
+    #pragma acc atomic
+    TOF_N[i] = TOF_N[i] + 1;
+    #pragma acc atomic
+    TOF_p[i] = TOF_p[i] + p;
+    #pragma acc atomic
+    TOF_p2[i] = TOF_p2[i] + p2;
+  };
+%}
+
 DECLARE
 %{
   DArray1d TOF_N;
@@ -105,17 +121,11 @@ TRACE
 
   PROP_Z0;
   if (x > xmin && x < xmax && y > ymin && y < ymax) {
-    i = floor ((1E6 * t - t_min) / delta_t); /* Bin number */
-    if (i >= 0 && i < nt) {
-      double p2 = p * p;
-      #pragma acc atomic
-      TOF_N[i] = TOF_N[i] + 1;
-      #pragma acc atomic
-      TOF_p[i] = TOF_p[i] + p;
-      #pragma acc atomic
-      TOF_p2[i] = TOF_p2[i] + p2;
-      SCATTER;
-    }
+    TRAIN_READ (i = floor ((1E6 * t - t_min) / delta_t); /* Bin number */
+                if (i >= 0 && i < nt) {
+                  save_ray (p, i, TOF_N, TOF_p, TOF_p2);
+                  SCATTER;
+                });
   }
   if (restore_neutron) {
     RESTORE_NEUTRON (INDEX_CURRENT_COMP, x, y, z, vx, vy, vz, t, sx, sy, sz, p);

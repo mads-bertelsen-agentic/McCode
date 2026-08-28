@@ -97,6 +97,7 @@
 * tfocus_dist: [m]      Position of time focusing window along z axis
 * tfocus_time: [s]      Time position of time focusing window
 * tfocus_width: [s]     Time width of time focusing window
+* target_tsplit: [1]    Target number of TOF sub-trains per detected neutron, used for the adaptive train count in -DTOF_TRAIN builds
 *
 * 
 *
@@ -108,8 +109,7 @@ DEFINE COMPONENT ESS_butterfly
 SETTING PARAMETERS (string sector="N",int beamline=1, yheight=0.03, cold_frac=0.5, 
   int target_index=0, dist=0, focus_xw=0, focus_yh=0,
   c_performance=1, t_performance=1, Lmin, Lmax, tmax_multiplier=3, int n_pulses=1,
-  acc_power=5,tfocus_dist=0,tfocus_time=0,tfocus_width=0)
-
+  acc_power=5,tfocus_dist=0,tfocus_time=0,tfocus_width=0, target_tsplit=5)
 
 SHARE %{
   #ifdef ADJUSTABLE_ESS_PULSE
@@ -151,6 +151,101 @@ SHARE %{
   double ThermalScalarsS[]={8.6910e-01, 7.9964e-01, 7.6365e-01, 7.9922e-01, 7.3479e-01, 7.3836e-01, 7.2773e-01, 7.2202e-01, 7.1667e-01, 7.0149e-01, 7.0084e-01};
   double dxCold[]={-0.01, -0.01, -0.002, 0.004,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0};
   double dxThermal[]={0.002, 0.003, 0.002, 0.007, 0.007, 0.007, 0.007, 0.007, 0.007, 0.007, 0.007};
+
+  #ifdef TOF_TRAIN
+  #define ESS_BUTTERFLY_GENERATE()                                                                        \
+    do {                                                                                                   \
+      int train_index;                                                                                     \
+      if (total_N_sent == 0)                                                                               \
+        adaptive_N = N_trains;                                                                             \
+      else {                                                                                               \
+        adaptive_N = ceil (target_tsplit * total_N_sent / total_arrived);                                 \
+        if (adaptive_N > N_trains)                                                                         \
+          adaptive_N = N_trains;                                                                           \
+      }                                                                                                    \
+      if (iscold) {                                                                                        \
+        ESS_2015_Schoenfeldt_cold_no_t (&t, &p, lambda, tfocus_width, tfocus_time, dt, yheight, Mwidth_t, \
+                                        yheight, Mwidth_c, tmax_multiplier, beamportangle, modX, modY);   \
+        p *= c_performance;                                                                                \
+        p *= ColdScalars[beamline - 1];                                                                    \
+      } else {                                                                                             \
+        ESS_2015_Schoenfeldt_thermal_no_t (&t, &p, lambda, tfocus_width, tfocus_time, dt, yheight,        \
+                                           Mwidth_t, yheight, Mwidth_c, tmax_multiplier, beamportangle,    \
+                                           modX, modY);                                                    \
+        p *= t_performance;                                                                                \
+        p *= ThermalScalars[beamline - 1];                                                                 \
+      }                                                                                                    \
+      if (iscold)                                                                                          \
+        p /= cold_frac;                                                                                    \
+      else                                                                                                 \
+        p /= (1 - cold_frac);                                                                              \
+      p *= cos_factor;                                                                                     \
+      p *= w_stat * w_focus * w_geom * w_mult;                                                             \
+      double base_p = p;                                                                                   \
+      P_last_time_manipulation = 0;                                                                        \
+      for (train_index = 0; train_index < adaptive_N; train_index++) {                                    \
+        p = base_p;                                                                                         \
+        if (tfocus_width > 0) {                                                                            \
+          dt = tfocus_dist / vz;                                                                           \
+          t = tfocus_time - dt;                                                                            \
+          t += randpm1 () * tfocus_width / 2.0;                                                           \
+          if (t < 0)                                                                                        \
+            ABSORB;                                                                                        \
+          if (t > tmax_multiplier * ESS_SOURCE_DURATION)                                                  \
+            ABSORB;                                                                                        \
+          p *= tfocus_width / (tmax_multiplier * ESS_SOURCE_DURATION);                                    \
+        } else {                                                                                           \
+          t = rand01 () * tmax_multiplier * ESS_SOURCE_DURATION;                                           \
+        }                                                                                                  \
+        if (iscold)                                                                                         \
+          p *= tmax_multiplier * ESS_2015_Schoenfeldt_cold_timedist (t, lambda, 3, ESS_SOURCE_DURATION);  \
+        else                                                                                               \
+          p *= tmax_multiplier * ESS_2015_Schoenfeldt_thermal_timedist (t, lambda, 3, ESS_SOURCE_DURATION); \
+        t += (double)floor ((n_pulses)*rand01 ()) / ESS_SOURCE_FREQUENCY;                                  \
+        t_offset[train_index] = t;                                                                         \
+        p_trains[train_index] = p / adaptive_N;                                                            \
+        P_last_time_manipulation += p_trains[train_index];                                                 \
+      }                                                                                                    \
+      t = 0;                                                                                                \
+      p = P_last_time_manipulation;                                                                        \
+      N_active = adaptive_N;                                                                                \
+    } while (0)
+  #else
+  #define ESS_BUTTERFLY_GENERATE()                                                                        \
+    do {                                                                                                   \
+      if (tfocus_width > 0) {                                                                              \
+        dt = tfocus_dist / vz;                                                                             \
+        t = tfocus_time - dt;                                                                              \
+        t += randpm1 () * tfocus_width / 2.0;                                                             \
+        if (t < 0)                                                                                        \
+          ABSORB;                                                                                         \
+        if (t > tmax_multiplier * ESS_SOURCE_DURATION)                                                    \
+          ABSORB;                                                                                         \
+        w_tfocus = tfocus_width / (tmax_multiplier * ESS_SOURCE_DURATION);                                \
+      } else {                                                                                             \
+        t = rand01 () * tmax_multiplier * ESS_SOURCE_DURATION;                                             \
+        w_tfocus = 1;                                                                                      \
+      }                                                                                                    \
+      if (iscold) {                                                                                        \
+        ESS_2015_Schoenfeldt_cold (&t, &p, lambda, tfocus_width, tfocus_time, dt, yheight, Mwidth_t,      \
+                                   yheight, Mwidth_c, tmax_multiplier, beamportangle, modX, modY);        \
+        p *= c_performance;                                                                                \
+        p *= ColdScalars[beamline - 1];                                                                    \
+      } else {                                                                                             \
+        ESS_2015_Schoenfeldt_thermal (&t, &p, lambda, tfocus_width, tfocus_time, dt, yheight, Mwidth_t, \
+                                      yheight, Mwidth_c, tmax_multiplier, beamportangle, modX, modY);      \
+        p *= t_performance;                                                                                \
+        p *= ThermalScalars[beamline - 1];                                                                 \
+      }                                                                                                    \
+      p *= w_stat * w_focus * w_geom * w_mult * w_tfocus;                                                  \
+      t += (double)floor ((n_pulses)*rand01 ()) / ESS_SOURCE_FREQUENCY;                                    \
+      p *= cos_factor;                                                                                     \
+      if (iscold)                                                                                          \
+        p /= cold_frac;                                                                                    \
+      else                                                                                                 \
+        p /= (1 - cold_frac);                                                                              \
+    } while (0)
+  #endif
 %}
 
 DECLARE
@@ -569,42 +664,7 @@ TRACE
   vy = v * dy / r;
   vx = v * dx / r;
 
-  /* Are we using time focusing? */
-  if (tfocus_width > 0) {
-    dt = tfocus_dist / vz;
-    t = tfocus_time - dt; /* Set time to hit time window center */
-    t += randpm1 () * tfocus_width / 2.0;
-    if (t < 0)
-      ABSORB; /* Kill neutron if outside pulse duration */
-    if (t > tmax_multiplier * ESS_SOURCE_DURATION)
-      ABSORB;
-    w_tfocus = tfocus_width / (tmax_multiplier * ESS_SOURCE_DURATION);
-  } else {
-    /* Simple, random wavelength @ random time */
-    t = rand01 () * tmax_multiplier * ESS_SOURCE_DURATION;
-    w_tfocus = 1;
-  }
-
-  if (iscold) { // case: cold moderator
-    /* Apply simple engineering reality correction */
-    ESS_2015_Schoenfeldt_cold (&t, &p, lambda, tfocus_width, tfocus_time, dt, yheight, Mwidth_t, yheight, Mwidth_c, tmax_multiplier, beamportangle, modX, modY);
-    p *= c_performance;
-    p *= ColdScalars[beamline - 1];
-  } else { // case: thermal moderator
-    ESS_2015_Schoenfeldt_thermal (&t, &p, lambda, tfocus_width, tfocus_time, dt, yheight, Mwidth_t, yheight, Mwidth_c, tmax_multiplier, beamportangle, modX,
-                                  modY);
-    p *= t_performance;
-    p *= ThermalScalars[beamline - 1];
-  }
-  p *= w_stat * w_focus * w_geom * w_mult * w_tfocus;
-  t += (double)floor ((n_pulses)*rand01 ()) / ESS_SOURCE_FREQUENCY; /* Select a random pulse */
-  p *= cos_factor;
-  /* Correct weight for sampling of cold vs. thermal events. */
-  if (iscold) {
-    p /= cold_frac;
-  } else {
-    p /= (1 - cold_frac);
-  }
+  ESS_BUTTERFLY_GENERATE ();
   SCATTER;
 %}
 
