@@ -238,7 +238,10 @@ SETTING PARAMETERS (
   string options="NULL", string filename="NULL",string geometry="NULL", int nowritefile=0,
   string username1="NULL", string username2="NULL", string username3="NULL",
   int tsplit=0, int adaptive_target=0
-)
+ )
+
+DEPENDENCY " -DTOF_TRAIN "
+
 /* these are protected C variables */
 
 /* Neutron parameters: (x,y,z,vx,vy,vz,t,sx,sy,sz,p) */
