@@ -1,7 +1,6 @@
-#include <complex.h>
+%include "mccode-complex-lib"
 #include <stdarg.h>
 #include <math.h>
-#include <complex.h>
 
 #ifdef REFLIBNAME
 #undef REFLIBNAME
@@ -17,6 +16,11 @@
 int reflec_Init(t_Reflec *R, enum reflec_Type typ, char *file, void *pars){
   if (R==NULL){
     R=calloc(1,sizeof(t_Reflec));
+    /* Exit if allocation failed */
+    if (!R) {
+      fprintf(stderr, "Error, allocting t_Reflect in reflec_Init - exit!\n");
+      exit(-1);
+    }
   }
   int status;
   R->type=typ;
@@ -33,7 +37,7 @@ int reflec_Init(t_Reflec *R, enum reflec_Type typ, char *file, void *pars){
           if (pars){
 	    reflec_Init_const(R,((double *)pars)[0]);
           }else{
-              reflec_Init_const(R,0);
+              reflec_Init_const(R,1.0);
 	  }
 	  break;
       }
@@ -44,10 +48,10 @@ int reflec_Init(t_Reflec *R, enum reflec_Type typ, char *file, void *pars){
           if(pars){
               reflec_Init_parratt(R, N,((double **) pars)[1], ((double **) pars)[2], ((double **) pars)[3]);        
           }else{
-              fprintf(stderr,"Warning: %s: No parameters specified to Parratt reflectivity algortihm. Setting R=0.\n",
+              fprintf(stderr,"Warning: %s: No parameters specified to Parratt reflectivity algortihm. Setting R=1.0.\n",
                       REFLIBNAME);
               R->type=CONSTANT;
-              R->prms.rconst.R=0;
+              R->rconst.R=1.0;
           }
           break;
       }
@@ -56,41 +60,44 @@ int reflec_Init(t_Reflec *R, enum reflec_Type typ, char *file, void *pars){
           if(pars){
 	    reflec_Init_kinematic(R, (int) ((double *)pars)[0],((double *)pars)[1],((double *)pars)[2],((double *)pars)[3]);
           }else{
-            reflec_Init_kinematic(R, (int) 0, 0.0, 0.0, 0.0);
+              fprintf(stderr,"Warning: %s: No parameters specified to KINEMATIC reflectivity algortihm. Setting R=1.0.\n",
+                      REFLIBNAME);
+              R->type=CONSTANT;
+              R->rconst.R=1.0;
           }
           break;
       }
     case BARE:
       {
-          stracpy(R->prms.rb.matrl,file,255);
-          reflec_Init_File(R,R->prms.rb.matrl);
+          stracpy(R->rb.matrl,file,255);
+          reflec_Init_File(R,R->rb.matrl);
           break;
       }
     case COATING:
       {
-          stracpy(R->prms.rc.matrl,file,255);
-          reflec_Init_File(R,R->prms.rc.matrl);
+          stracpy(R->rc.matrl,file,255);
+          reflec_Init_File(R,R->rc.matrl);
           break;
       }
     case Q_PARAMETRIC:
       {
-          stracpy(R->prms.rqpm.fname,file,255);
-          reflec_Init_File(R,R->prms.rqpm.fname);
+          stracpy(R->rqpm.fname,file,255);
+          reflec_Init_File(R,R->rqpm.fname);
           break;
       }
     case ETH_PARAMETRIC:
       {
-          stracpy(R->prms.rethpm.fname,file,255);
-          reflec_Init_File(R,R->prms.rethpm.fname);
+          stracpy(R->rethpm.fname,file,255);
+          reflec_Init_File(R,R->rethpm.fname);
           break;
       }
     default:
       {
-        fprintf(stderr,"Error: %s: Undetermined reflectivity parameterization type. Setting R=0.\n",
+        fprintf(stderr,"Error: %s: Undetermined reflectivity parameterization type. ABORT.\n",
                 REFLIBNAME);
 	free(R);
 	R=NULL;
-	return -1;
+	exit(-1);
       }
   }
   return 0;
@@ -98,24 +105,24 @@ int reflec_Init(t_Reflec *R, enum reflec_Type typ, char *file, void *pars){
 
 int reflec_Init_parratt(t_Reflec *R, int N, double *d, double *delta, double *beta){
     R->type=PARRATT;
-    R->prms.rp.N=N;
-    R->prms.rp.d=d;
-    R->prms.rp.delta=delta;
-    R->prms.rp.beta=beta;
+    R->rp.N=N;
+    R->rp.d=d;
+    R->rp.delta=delta;
+    R->rp.beta=beta;
     return 0;
 }
 
 int reflec_Init_kinematic(t_Reflec *R, int N, double Gamma, double Lambda, double rhoAB){
     R->type=KINEMATIC;
-    R->prms.rk.N=N;
-    R->prms.rk.Gamma=Gamma;
-    R->prms.rk.Lambda=Lambda;
-    R->prms.rk.rho_AB=rhoAB;
+    R->rk.N=N;
+    R->rk.Gamma=Gamma;
+    R->rk.Lambda=Lambda;
+    R->rk.rho_AB=rhoAB;
     return 0;
 }
  int reflec_Init_const(t_Reflec *R, double R0){
    R->type=CONSTANT;
-   R->prms.rconst.R=R0;
+   R->rconst.R=R0;
    return 0;
  }
 
@@ -136,7 +143,7 @@ int reflec_Init_File(t_Reflec *R, char *filename){
       fprintf(stderr,"Warning: %s: No reflectivity file given. Surface is opaque.\n",
               REFLIBNAME);
       R->type=CONSTANT;
-      R->prms.rconst.R=0;
+      R->rconst.R=0;
       return 0;
     }
 
@@ -148,7 +155,7 @@ int reflec_Init_File(t_Reflec *R, char *filename){
     switch(R->type){
       case CONSTANT:
         {
-          R->prms.rconst.R=Table_Index(*table, 0, 0);
+          R->rconst.R=Table_Index(*table, 0, 0);
           break;
         }
 
@@ -160,8 +167,8 @@ int reflec_Init_File(t_Reflec *R, char *filename){
                     REFLIBNAME, filename);
             exit(-1);
           }
-          stracpy(R->prms.rb.matrl,header_parsed[0],255);
-          R->prms.rb.d=strtod(header_parsed[1], NULL);
+          stracpy(R->rb.matrl,header_parsed[0],255);
+          R->rb.d=strtod(header_parsed[1], NULL);
           break;
         }
 
@@ -173,22 +180,22 @@ int reflec_Init_File(t_Reflec *R, char *filename){
                     REFLIBNAME,filename);
             exit(-1);
           } else {
-            stracpy(R->prms.rc.matrl,header_parsed[0],255);
-            R->prms.rc.T = table;
-            R->prms.rc.d = strtod(header_parsed[4], NULL);
-            R->prms.rc.rho=strtod(header_parsed[3],NULL);
-            R->prms.rc.Z=strtod(header_parsed[1],NULL);
-            R->prms.rc.At=strtod(header_parsed[2],NULL);
+            stracpy(R->rc.matrl,header_parsed[0],255);
+            R->rc.T = table;
+            R->rc.d = strtod(header_parsed[4], NULL);
+            R->rc.rho=strtod(header_parsed[3],NULL);
+            R->rc.Z=strtod(header_parsed[1],NULL);
+            R->rc.At=strtod(header_parsed[2],NULL);
           }
           break;
         }
 
       case Q_PARAMETRIC:
         {
-          stracpy(R->prms.rqpm.fname,filename,255);
-          R->prms.rqpm.T=table;
-          R->prms.rqpm.qmin=Table_Index(*table,0,0);
-          R->prms.rqpm.qmax=Table_Index(*table,table->rows,0);
+          stracpy(R->rqpm.fname,filename,255);
+          R->rqpm.T=table;
+          R->rqpm.qmin=Table_Index(*table,0,0);
+          R->rqpm.qmax=Table_Index(*table,table->rows,0);
           break;
         }
 
@@ -201,13 +208,13 @@ int reflec_Init_File(t_Reflec *R, char *filename){
             exit(-1);
           }
           unsigned long N=strtol(header_parsed[0], NULL, 10);
-          R->prms.rp.N = N;
-          R->prms.rp.d = calloc(N,sizeof(double));
-          *(R->prms.rp.d) = strtod(header_parsed[1], NULL);
-          R->prms.rp.delta = calloc(N,sizeof(double));
-          *(R->prms.rp.delta) = strtod(header_parsed[2], NULL);
-          R->prms.rp.beta = calloc(N,sizeof(double));
-          *(R->prms.rp.beta) = strtod(header_parsed[3], NULL);
+          R->rp.N = N;
+          R->rp.d = calloc(N,sizeof(double));
+          *(R->rp.d) = strtod(header_parsed[1], NULL);
+          R->rp.delta = calloc(N,sizeof(double));
+          *(R->rp.delta) = strtod(header_parsed[2], NULL);
+          R->rp.beta = calloc(N,sizeof(double));
+          *(R->rp.beta) = strtod(header_parsed[3], NULL);
           break;
         }
 
@@ -220,17 +227,17 @@ int reflec_Init_File(t_Reflec *R, char *filename){
             exit(-1);
           }
 
-          R->prms.rk.N = strtol(header_parsed[0], NULL, 10);
-          R->prms.rk.Gamma = strtod(header_parsed[2], NULL);
-          R->prms.rk.Lambda = strtod(header_parsed[3], NULL);
-          R->prms.rk.rho_AB = strtod(header_parsed[4], NULL);
+          R->rk.N = strtol(header_parsed[0], NULL, 10);
+          R->rk.Gamma = strtod(header_parsed[2], NULL);
+          R->rk.Lambda = strtod(header_parsed[3], NULL);
+          R->rk.rho_AB = strtod(header_parsed[4], NULL);
           break;
         }
 
       case ETH_PARAMETRIC:
         {
-          stracpy(R->prms.rethpm.fname,filename,255);
-          R->prms.rethpm.T=table;
+          stracpy(R->rethpm.fname,filename,255);
+          R->rethpm.T=table;
 
           /*parse header for E_min E_max etc.*/
           char **header_parsed = Table_ParseHeader(table->header,"e_min=","e_max=","theta_min=","theta_max=",NULL);
@@ -239,12 +246,12 @@ int reflec_Init_File(t_Reflec *R, char *filename){
                     REFLIBNAME,filename); //1619
             exit(-1);
           }
-          R->prms.rethpm.emin=strtod(header_parsed[0],NULL);
-          R->prms.rethpm.emax=strtod(header_parsed[1],NULL);
-          R->prms.rethpm.thetamin=strtod(header_parsed[2],NULL);
-          R->prms.rethpm.thetamax=strtod(header_parsed[3],NULL);
-          int rows = R->prms.rethpm.T->rows;
-          int cols = R->prms.rethpm.T->columns;
+          R->rethpm.emin=strtod(header_parsed[0],NULL);
+          R->rethpm.emax=strtod(header_parsed[1],NULL);
+          R->rethpm.thetamin=strtod(header_parsed[2],NULL);
+          R->rethpm.thetamax=strtod(header_parsed[3],NULL);
+          int rows = R->rethpm.T->rows;
+          int cols = R->rethpm.T->columns;
           if(rows == 0){ //implies cols == 0 as well
             fprintf(stderr,"Error: %s: File %s contains no table.\n",
                     REFLIBNAME, filename);
@@ -253,16 +260,16 @@ int reflec_Init_File(t_Reflec *R, char *filename){
             if(rows == 1){
               printf("Warning: %s: File %s contains only a single row. Setting e_step = 0.\n",
                      REFLIBNAME, filename);
-              R->prms.rethpm.estep=0;
+              R->rethpm.estep=0;
             } else {
-              R->prms.rethpm.estep=(R->prms.rethpm.emax - R->prms.rethpm.emin)/(rows-1);
+              R->rethpm.estep=(R->rethpm.emax - R->rethpm.emin)/(rows-1);
             }
             if(cols == 1){
               printf("Warning: %s: File %s contains only a single column. Setting theta_step = 0.\n",
                      REFLIBNAME, filename);
-              R->prms.rethpm.thetastep=0;
+              R->rethpm.thetastep=0;
             } else {
-              R->prms.rethpm.thetastep=(R->prms.rethpm.thetamax - R->prms.rethpm.thetamin)/(cols-1);
+              R->rethpm.thetastep=(R->rethpm.thetamax - R->rethpm.thetamin)/(cols-1);
             }
           }
           break;
@@ -328,8 +335,8 @@ enum reflec_Type get_table_reflec_type(t_Table *t){
 }
 
 /*This section contains the functions that compute the actual reflectivity*/
-double complex reflec_coating(t_Reflec r_handle, double q, double g, double k){
-    struct t_reflec_coating *ptr=&(r_handle.prms.rc);
+cdouble reflec_coating(t_Reflec r_handle, double q, double g, double k){
+    struct t_reflec_coating *ptr=&(r_handle.rc);
     /*adjust p according to reflectivity*/
     double Qc,f1,f2,na,e;
     /*length of wavevector transfer may be compute from s and n_ above*/
@@ -343,114 +350,137 @@ double complex reflec_coating(t_Reflec r_handle, double q, double g, double k){
     na=NA*ptr->rho/ptr->At*1e-24;
     Qc=4*sqrt(M_PI*na*RE*f1);
 
-    double complex qp,qn,rr;
+    cdouble qp,qn,rr;
     double b_mu,R;
+    double qn_re;
 
-    qn=q/Qc;
+    qn_re=q/Qc;
+    qn=cplx(qn_re,0.0);
     /*delta=na*r0*2*M_PI/k2*f1;*/
     /*beta=na*r0*2*M_PI/k^2*f2; b_mu=beta*(2*k)^2 / Qc^2*/
     b_mu=8*M_PI*na*RE*f2/(Qc*Qc);
-    if(qn==1){
-        qp=sqrt(b_mu)*(1+I);
+    if(qn_re==1){
+        /*sqrt(b_mu)*(1+I)*/
+        qp=rmul(sqrt(b_mu), cplx(1.0,1.0));
     }else {
-        qp=csqrt((qn*qn)-1+2*I*b_mu);
+        /*(qn*qn)-1+2*I*b_mu*/
+        qp=csqrt(cadd(radd(-1.0, cmul(qn,qn)), cplx(0.0,2*b_mu)));
     }
     /*and from this compute the reflectivity*/
-    rr=(qn-qp)/(qn+qp);
+    rr=cdiv(csub(qn,qp), cadd(qn,qp));
     return rr;
 }
 
-double complex reflec_bare(t_Reflec r_handle, double q, double g){
-    return 0.0;
+cdouble reflec_bare(t_Reflec r_handle, double q, double g){
+    return cplx(0.0,0.0);
 }
 
-double complex reflec_kinematic(t_Reflec r_handle, double q, double g){
-    double complex r1,rN;
-    struct t_reflec_kinematic *ptr=&(r_handle.prms.rk);
+cdouble reflec_kinematic(t_Reflec r_handle, double q, double g){
+    cdouble r1,rN,num_factor,den_factor;
+    struct t_reflec_kinematic *ptr=&(r_handle.rk);
     double zeta=ptr->Lambda*q/(2*M_PI);
     double beta=0;
-    r1 = -2*I*RE* ptr->rho_AB * (pow(ptr->Lambda,2.0)*ptr->Gamma/zeta) * sin(M_PI*ptr->Gamma*zeta)/(M_PI*ptr->Gamma*zeta);
-    rN = r1*(1-cexp(I*2*M_PI*zeta*ptr->N)*exp(-beta*ptr->N))/(1-cexp(I*2*M_PI*zeta)*exp(beta));
+    double r1_scale;
+
+    /*-2*I*RE* ptr->rho_AB * (pow(ptr->Lambda,2.0)*ptr->Gamma/zeta) * sin(M_PI*ptr->Gamma*zeta)/(M_PI*ptr->Gamma*zeta)
+      -- everything except the leading -2*I*RE factor is real, so collapse it to a real scale first*/
+    r1_scale = ptr->rho_AB * (pow(ptr->Lambda,2.0)*ptr->Gamma/zeta) * sin(M_PI*ptr->Gamma*zeta)/(M_PI*ptr->Gamma*zeta);
+    r1 = cplx(0.0, -2*RE*r1_scale);
+
+    /*cexp(I*2*M_PI*zeta*ptr->N)*exp(-beta*ptr->N)*/
+    num_factor = rmul(exp(-beta*ptr->N), cexp(cplx(0.0, 2*M_PI*zeta*ptr->N)));
+    /*cexp(I*2*M_PI*zeta)*exp(beta)*/
+    den_factor = rmul(exp(beta), cexp(cplx(0.0, 2*M_PI*zeta)));
+
+    /*r1*(1-num_factor)/(1-den_factor)*/
+    rN = cdiv(cmul(r1, radd(1.0, cneg(num_factor))), radd(1.0, cneg(den_factor)));
     return rN;
 }
 
-double complex reflec_q_prmtc(t_Reflec r_handle, double q, double g){
+cdouble reflec_q_prmtc(t_Reflec r_handle, double q, double g){
     double r;
-    struct t_reflec_q_prmtc *ptr=&(r_handle.prms.rqpm);
+    struct t_reflec_q_prmtc *ptr=&(r_handle.rqpm);
     if (ptr->T->columns>2){
         double c=(ptr->T->columns-2)*g+1;
         r=Table_Value2d(*(ptr->T),ptr->T->rows*q/(ptr->qmax-ptr->qmin),c);
     }else{
         r=Table_Value(*(ptr->T),q,1);
     }
-    return (double complex)r;
+    return cplx(r,0.0);
 }
 
-double complex reflec_eth_prmtc(t_Reflec r_handle, double g, double e, double th){
+cdouble reflec_eth_prmtc(t_Reflec r_handle, double g, double e, double th){
     double r,ec,thc;
-    struct t_reflec_eth_prmtc *ptr=&(r_handle.prms.rethpm);
+    struct t_reflec_eth_prmtc *ptr=&(r_handle.rethpm);
     ec=(ptr->T->rows-1) * (e-ptr->emin)/(ptr->emax - ptr->emin);
     thc=(ptr->T->columns-1)*(th-ptr->thetamin)/(ptr->thetamax - ptr->thetamin);
     r=Table_Value2d(*(ptr->T),ec,thc);
-    return (double complex)r;
+    return cplx(r,0.0);
 }
 
 /* Entry function to Parratt's recursive algorithm for multilayers.*/
-double complex reflec_parratt(t_Reflec r_handle, double q, double g, double k){
-    double complex r,qp,rp;
-    double k2;
-    double complex qinf;
-    double qpd,rd,p;
-    t_reflec_parratt *pp=&(r_handle.prms.rp);
+cdouble reflec_parratt(t_Reflec r_handle, double q, double g, double k){
+    cdouble r,qp,rp;
+    double k2=k*k;
+    cdouble qinf;
+    cdouble qpd,rd,p;
+    t_reflec_parratt *pp=&(r_handle.rp);
 
-    qp=q;
-    qpd=csqrt(q*q - 8*k2* *(pp->delta) + I*8*k2* *(pp->beta));
+    qp=cplx(q,0.0);
+    /*q*q - 8*k2* *(pp->delta) + I*8*k2* *(pp->beta)*/
+    qpd=csqrt(cplx(q*q - 8*k2* *(pp->delta), 8*k2* *(pp->beta)));
     k2=k*k;
 
     if (pp->N>0){
-        rp=(qp-qpd)/(qp+qpd);
+        rp=cdiv(csub(qp,qpd), cadd(qp,qpd));
         rd=parrat_reflec_bulk(pp->N,pp->delta,pp->beta,pp->d,k,q);
-        p=cexp(I*qpd* *(pp->d));
-        r = (rp+p*rd)/(1+rp*rd*p);
+        /*I*qpd* *(pp->d)*/
+        p=cexp(rmul(*(pp->d), cmul(cplx(0.0,1.0), qpd)));
+        /*(rp+p*rd)/(1+rp*rd*p)*/
+        r = cdiv(cadd(rp, cmul(p,rd)), radd(1.0, cmul(cmul(rp,rd),p)));
     }else{
-        r = (qp-qpd)/(qp+qpd);
+        r = cdiv(csub(qp,qpd), cadd(qp,qpd));
     }
     return r;
 }
 /* Lower layer function fo rParratt's recursive algorithm. Here recursion
 * takes place by calls to itself.*/
-double complex parrat_reflec_bulk(int N, double *delta, double *beta, double *d, double k, double q){
-    double complex qp,rp,rr;
+cdouble parrat_reflec_bulk(int N, double *delta, double *beta, double *d, double k, double q){
+    cdouble qp,rp,rr;
     double k2=k*k;
-    double complex qinf;
-    double complex qpd,rpd,p;
+    cdouble qinf;
+    cdouble qpd,rpd,p;
 
-    qp=csqrt(q*q - 8*k2* *delta + I*8*k2* *beta);
-    qpd=csqrt(q*q - 8*k2* *(delta+1) + I*8*k2* *(beta+1));
+    /*q*q - 8*k2* *delta + I*8*k2* *beta*/
+    qp=csqrt(cplx(q*q - 8*k2* *delta, 8*k2* *beta));
+    /*q*q - 8*k2* *(delta+1) + I*8*k2* *(beta+1)*/
+    qpd=csqrt(cplx(q*q - 8*k2* *(delta+1), 8*k2* *(beta+1)));
 
     if (N>1){
-        rp=(qp-qpd)/(qp+qpd);
+        rp=cdiv(csub(qp,qpd), cadd(qp,qpd));
         rpd=parrat_reflec_bulk(N-1,(delta+1),(beta+1),(d+1),k,q);
-        p=cexp(I*qpd* d[1]);
-        rr= (rp+p*rpd)/(1+rp*rpd*p);
+        /*I*qpd* d[1]*/
+        p=cexp(rmul(d[1], cmul(cplx(0.0,1.0), qpd)));
+        /*(rp+p*rpd)/(1+rp*rpd*p)*/
+        rr= cdiv(cadd(rp, cmul(p,rpd)), radd(1.0, cmul(cmul(rp,rpd),p)));
     }
     if (N==1){
         /*the bottom layer (on top of substrate)*/
-        rr=(qp-qpd)/(qp+qpd);
+        rr=cdiv(csub(qp,qpd), cadd(qp,qpd));
     }
     return rr;
 }
 
 /* Dispatcher functions that call the underlying computations depending on the type of reflectivity*/
 
-double complex refleccq( t_Reflec r_handle, double q, double g, double k, double theta){
-    double complex r;
+cdouble refleccq( t_Reflec r_handle, double q, double g, double k, double theta){
+    cdouble r;
     /*using the normalized coordinate g which lies along the grading direction*/
 
     switch(r_handle.type){
       case CONSTANT:
         {
-          r=r_handle.prms.rconst.R;
+          r=cplx(r_handle.rconst.R,0.0);
           break;
         }
       case BARE:
@@ -489,7 +519,7 @@ double complex refleccq( t_Reflec r_handle, double q, double g, double k, double
           fprintf(stderr,"Error: %s: Undetermined reflectivity type. R set to 1.\n",
                   REFLIBNAME);
 #endif
-          r=1.0;
+          r=cplx(1.0,0.0);
         }
     }
     return r;
@@ -501,7 +531,7 @@ double reflecq( t_Reflec r_handle, double q, double g, double k, double theta){
     switch(r_handle.type){
       case CONSTANT:
         {
-          r=fabs(r_handle.prms.rconst.R);
+          r=1.0; //fabs(r_handle.rconst.R);
           break;
         }
     case BARE:
@@ -511,21 +541,23 @@ double reflecq( t_Reflec r_handle, double q, double g, double k, double theta){
         }
     case COATING:
         {
-          double complex rp;
+          cdouble rp;
           rp=reflec_coating(r_handle,q,g,k);
-          r= sqrt(creal(rp * conj(rp)));
-          break;
+          r= sqrt(creal(cmul(rp, conj(rp))));
+	  break;
         }
     case Q_PARAMETRIC:
         {
           r=cabs(reflec_q_prmtc(r_handle,q,g));
           break;
         }
-        /*case PARRATT:
+    #ifndef OPENACC
+    case PARRATT:
         {
           r=cabs(reflec_parratt(r_handle,q,g,k));
           break;
-	  }*/
+	}
+    #endif
     case ETH_PARAMETRIC:
         {
             r=cabs(reflec_eth_prmtc(r_handle,g,k*K2E,theta));
@@ -559,7 +591,7 @@ double refleceth( t_Reflec r_handle,double e, double th, double g){
     }
 }
 
-double complex reflecceth( t_Reflec r_handle,double e, double th, double g){
+cdouble reflecceth( t_Reflec r_handle,double e, double th, double g){
     double q;
     double k=e*E2K;
     q=k*2.0*sin(th);

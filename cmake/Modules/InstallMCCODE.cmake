@@ -415,7 +415,7 @@ macro(installMCCODE)
     install(PROGRAMS ${WORK}/support/${FLAVOR}-labenv.bat DESTINATION "${DEST_BINDIR}")
 
     # Python/Perl related batches special handling
-    foreach (name run.bat doc.bat test.bat viewtest.bat resplot.bat plot.bat display.bat gui.bat guistart.bat plot-pyqtgraph.bat plot-matplotlib.bat plot-matlab.bat display-webgl.bat display-webgl-classic.bat display-pyqtgraph.bat display-cad.bat display-matplotlib.bat display-mantid.bat display-matlab.bat)
+    foreach (name run.bat doc.bat test.bat viewtest.bat resplot.bat plot.bat coplot.bat plotdiff.bat display.bat gui.bat guistart.bat plot-pyqtgraph.bat coplot-pyqtgraph.bat plotdiff-pyqtgraph.bat plot-matplotlib.bat coplot-matplotlib.bat plotdiff-matplotlib.bat plot-matlab.bat plot-html.bat coplot-html.bat plotdiff-html.bat display-webgl.bat display-webgl-classic.bat display-pyqtgraph.bat display-cad.bat display-matplotlib.bat display-mantid.bat display-matlab.bat)
       configure_file(
 	      cmake/support/run-scripts/${name}.in
 	      work/support/${MCCODE_PREFIX}${name}
@@ -441,6 +441,10 @@ macro(installMCCODE)
       TARGETS ${FLAVOR}-pygen
       DESTINATION "${DEST_BINDIR}"
     )
+
+    # windirent.h - dirent support for MSVC
+    install(FILES ${WORK}/src/windirent.h DESTINATION "${DEST_INCLUDEDIR}")
+
     if ( MCCODE_USE_LEGACY_DESTINATIONS )
       install(PROGRAMS
         cmake/support/run-scripts/mpirun.bat

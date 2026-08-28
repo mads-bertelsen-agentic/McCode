@@ -73,7 +73,7 @@ int physics_my(enum process choice, double *my,double *k_initial, union data_tra
     #endif
     return output;
 }
-  
+
 
 int physics_scattering(enum process choice, double *k_final, double *k_initial, double *weight, union data_transfer_union data_transfer, struct focus_data_struct *focus_data, _class_particle *_particle) {
 

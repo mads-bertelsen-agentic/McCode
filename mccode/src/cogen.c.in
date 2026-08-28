@@ -1691,9 +1691,9 @@ void undef_trace_section(struct instr_def *instr)
             "x", "y", "z", "vx", "vy", "vz",
             "t", "sx", "sy", "sz", "p", "mcgravitation", "mcMagnet", "allow_backprop", "_mctmp_a", "_mctmp_b", "_mctmp_c"
     #elif MCCODE_PROJECT == 2   /* xray */
-    #define NUM_STATE_PARS 15
+    #define NUM_STATE_PARS 16
             "x", "y", "z", "kx", "ky", "kz",
-            "phi", "t", "Ex", "Ey","Ez", "p", "_mctmp_a", "_mctmp_b", "_mctmp_c"
+            "phi", "t", "Ex", "Ey","Ez", "p", "allow_backprop", "_mctmp_a", "_mctmp_b", "_mctmp_c"
     #endif
     };
   List l;
@@ -1810,9 +1810,9 @@ int cogen_raytrace(struct instr_def *instr)
             "x", "y", "z", "vx", "vy", "vz",
             "t", "sx", "sy", "sz", "p", "mcgravitation", "mcMagnet", "allow_backprop", "_mctmp_a", "_mctmp_b", "_mctmp_c"
     #elif MCCODE_PROJECT == 2   /* xray */
-    #define NUM_STATE_PARS 15
+    #define NUM_STATE_PARS 16
             "x", "y", "z", "kx", "ky", "kz",
-            "phi", "t", "Ex", "Ey","Ez", "p", "_mctmp_a", "_mctmp_b", "_mctmp_c"
+            "phi", "t", "Ex", "Ey","Ez", "p", "allow_backprop", "_mctmp_a", "_mctmp_b", "_mctmp_c"
     #endif
     };
   List l;
@@ -2048,7 +2048,11 @@ int cogen_raytrace(struct instr_def *instr)
   coutf("/* loop to generate events and call raytrace() propagate them */");
   coutf("void raytrace_all(unsigned long long ncount, unsigned long seed) {");
   coutf("");
-
+  coutf("  // if on GPU and mcdotrace just exit");
+  coutf("  #ifdef OPENACC");
+  coutf("  if (!mcdotrace) {");
+  coutf("  #endif");
+  coutf("");
   coutf("  /* CPU-loop */");
   coutf("  unsigned long long loops;");
   coutf("  loops = ceil((double)ncount/gpu_innerloop);");
@@ -2148,6 +2152,12 @@ int cogen_raytrace(struct instr_def *instr)
   coutf("  MPI_MASTER(");
   coutf("  printf(\"*** TRACE end *** \\n\");");
   coutf("  );");
+  coutf("");
+  coutf("  // if on GPU and mcdotrace just exit");
+  coutf("  #ifdef OPENACC");
+  coutf("  }");
+  coutf("  #endif");
+  coutf("");
   coutf("} /* raytrace_all */");
   coutf("");
   coutf("#endif //no-FUNNEL");
@@ -2174,9 +2184,9 @@ int cogen_rt_funnel(struct instr_def *instr)
             "x", "y", "z", "vx", "vy", "vz",
             "t", "sx", "sy", "sz", "p", "mcgravitation", "mcMagnet", "allow_backprop", "_mctmp_a", "_mctmp_b", "_mctmp_c"
     #elif MCCODE_PROJECT == 2   /* xray */
-    #define NUM_STATE_PARS 15
+    #define NUM_STATE_PARS 16
             "x", "y", "z", "kx", "ky", "kz",
-            "phi", "t", "Ex", "Ey","Ez", "p", "_mctmp_a", "_mctmp_b", "_mctmp_c"
+            "phi", "t", "Ex", "Ey","Ez", "p", "allow_backprop", "_mctmp_a", "_mctmp_b", "_mctmp_c"
     #endif
     };
   List l;
@@ -2192,6 +2202,10 @@ int cogen_rt_funnel(struct instr_def *instr)
 
   coutf("void raytrace_all_funnel(unsigned long long ncount, unsigned long seed) {");
   coutf("");
+  coutf("  // if on GPU and mcdotrace just exit");
+  coutf("  #ifdef OPENACC");
+  coutf("  if (!mcdotrace) {");
+  coutf("  #endif");
   coutf("  // set up outer (CPU) loop / particle batches");
   coutf("  unsigned long long loops;");
   coutf("");
@@ -2377,7 +2391,10 @@ int cogen_rt_funnel(struct instr_def *instr)
   coutf("  free(pbuffer);");
   cout( "");
   coutf("  printf(\"\\n\");");
-
+  coutf("  // if on GPU and mcdotrace just exit");
+  coutf("  #ifdef OPENACC");
+  coutf("  }");
+  coutf("  #endif");
   coutf("} /* raytrace_all_funnel */");
   coutf("#endif // FUNNEL");
   coutf("");

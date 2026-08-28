@@ -203,7 +203,6 @@ INITIALIZE
     buffermax = mcget_ncount ();
   }
   X = create_darr1d (buffermax);
-  X = create_darr1d (buffermax);
   Y = create_darr1d (buffermax);
   Z = create_darr1d (buffermax);
   VX = create_darr1d (buffermax);

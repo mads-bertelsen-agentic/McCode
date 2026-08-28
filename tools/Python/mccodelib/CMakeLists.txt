@@ -92,7 +92,7 @@ include(CPack)
 
 set(WORK "${PROJECT_BINARY_DIR}/work")
 
-set(entries_with_conda_prefix "CFLAGS;NEXUSFLAGS;MPIFLAGS;MCPLFLAGS;NCRYSTALFLAGS;GSLFLAGS;XRLFLAGS;OACCFLAGS;TOOLS_CC;MPIRUN;MPICC")
+set(entries_with_conda_prefix "CFLAGS;NEXUSFLAGS;MPIFLAGS;MCPLFLAGS;KDSOURCEFLAGS;NCRYSTALFLAGS;GSLFLAGS;XRLFLAGS;OACCFLAGS;TOOLS_CC;MPIRUN;MPICC")
 foreach( var ${entries_with_conda_prefix} )
   set( MCCODE_FINAL_${var} "${${var}}" )
 endforeach()
@@ -125,7 +125,7 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/mccode_config.py.in" "${WORK}/mccode
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/mccode_config.json.in" "${WORK}/mccode_config.json" @ONLY)
 
 # Python files
-foreach(name __init__.py fcparticleparser.py utils.py flowchart.py instrgeom.py instrparser.py mcdisplayutils.py mcplotloader.py nodetree.py particleparser.py pipetools.py plotgraph.py pqtgfrontend.py cflags.py)
+foreach(name __init__.py fcparticleparser.py utils.py flowchart.py instrgeom.py instrparser.py mcdisplayutils.py mcplotloader.py mcplotdiffloader.py nodetree.py particleparser.py pipetools.py plotgraph.py pqtgfrontend.py cflags.py)
   install(
     FILES "${PROJECT_SOURCE_DIR}/${name}"
     DESTINATION "${DEST_TOOLDIR}/${TOOLS_NAME}"

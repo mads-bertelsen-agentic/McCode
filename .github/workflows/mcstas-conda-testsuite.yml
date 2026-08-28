@@ -16,17 +16,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest, python: '3.12', mpi: 'openmpi' }
-          - { os: ubuntu-latest, python: '3.12', mpi: 'mpich' }
-          - { os: macos-latest, python: '3.12', mpi: 'openmpi' }
-          - { os: macos-latest, python: '3.12', mpi: 'mpich' }
-          - { os: windows-latest, python: '3.12', mpi: 'msmpi' }
+          - { os: ubuntu-latest, mpi: 'openmpi', nmpi: 'auto' }
+          - { os: macos-latest, mpi: 'openmpi', nmpi: '2' }
+          - { os: windows-latest, mpi: 'msmpi', nmpi: 'auto' }
 
-    name: ${{ matrix.os }}.${{ matrix.mpi }}.python-${{ matrix.python }}
+    name: ${{ matrix.os }}.${{ matrix.mpi }}.conda-testsuite
     runs-on: ${{ matrix.os }}
-    env:
-      CC: ${{ matrix.CC }}
-      CXX: ${{ matrix.CXX }}
     defaults:
       run:
         shell: bash -el {0}
@@ -39,15 +34,7 @@ jobs:
 
     - name: Setup VS in shell Intel
       if: runner.os == 'Windows'
-      uses: ilammy/msvc-dev-cmd@v1
-
-    - uses: conda-incubator/setup-miniconda@v3.3.0
-      with:
-        activate-environment: mcstas
-        auto-update-conda: true
-        conda-remove-defaults: true
-        channels: conda-forge
-        python-version: ${{ matrix.python }}
+      uses: egor-tensin/vs-shell@v2
 
     - name: Get conda dependency list
       id: conda-deps
@@ -55,11 +42,10 @@ jobs:
            ./src/devel/bin/mccode-create-conda-yml -m mcstas -n mcstas -o dependencies.yml
            cat dependencies.yml
 
-    - name: Update conda
-      id: update-conda
-      run: |
-           conda install mamba -y
-           mamba env update --file dependencies.yml
+    - uses: mamba-org/setup-micromamba@v3
+      with:
+        environment-name: mcstas
+        environment-file: dependencies.yml
 
     - name: Check versions
       id: version-checks
@@ -68,19 +54,32 @@ jobs:
            python3 --version
            which cmake
            cmake --version
-           if [ "$RUNNER_OS" != "Windows" ];
-           then
-             echo C compiler: $CC
-             $CC --version
-           else
-             echo C compiler: cl.exe
-             cl.exe
-           fi
 
     - name: Configure build and install mcstas
       id: mcstas-install
       run: |
            ./src/devel/bin/mccode-build-conda -m mcstas -s $PWD/src -b $PWD/build_mcstas
+
+    - name: Validate build output
+      id: build-validation
+      if: always()
+      run: |
+           set -e
+           set -u
+           set -x
+           if [ "$RUNNER_OS" == "Windows" ];
+           then
+             echo "Validating Windows build output..."
+             echo "CONDA_PREFIX: $CONDA_PREFIX"
+             echo "Checking for mcstas executable..."
+             test -f ${CONDA_PREFIX}/bin/mcstas || test -f ${CONDA_PREFIX}/bin/mcstas.bat || { echo "ERROR: mcstas not found"; exit 1; }
+             echo "Checking for mctest executable..."
+             test -f ${CONDA_PREFIX}/bin/mctest.bat || { echo "ERROR: mctest.bat not found"; ls -la ${CONDA_PREFIX}/bin/ | grep -i mctest || echo "No mctest found"; exit 1; }
+           else
+             echo "Validating Unix build output..."
+             test -f ${CONDA_PREFIX}/bin/mcstas || { echo "ERROR: mcstas not found"; exit 1; }
+             test -f ${CONDA_PREFIX}/bin/mctest || { echo "ERROR: mctest not found"; exit 1; }
+           fi
 
     - name: Post install openmpi hacks macOS
       id: post-install-openmpi-hacks-macOS
@@ -108,8 +107,7 @@ jobs:
              export TMPDIR=${HOME}/tmp
            fi
            # Run the test with 2 core mpi
-           ${MCTEST_EXECUTABLE} --verbose --testdir $PWD --suffix ${{ matrix.os }}_${{ matrix.mpi }} --mpi=2
-
+           ${MCTEST_EXECUTABLE} --verbose --testdir $PWD --suffix ${{ matrix.os }}_${{ matrix.mpi }} --mpi=${{ matrix.nmpi }} --uid=${RUNNER_TRACKING_ID}
     - name: 'Tar output files'
       id: tar-package
       if: always()
@@ -119,15 +117,129 @@ jobs:
            set -x
            # Clear out binaries from sim dir and tar up artifact
            ls | grep run_ | xargs -n1 ./src/devel/bin/mccode-simdir-cleanfiles -d 
-           tar cvfz mcstas-${{ matrix.os }}.${{ matrix.mpi }}.python-${{ matrix.python }}_output.tgz run_test-suite
+           tar cvfz mcstas-${{ matrix.os }}.${{ matrix.mpi }}.conda-testsuite_output.tgz run_test-suite
 
     - name: 'Upload Artifact'
       id: tar-upload
       uses: actions/upload-artifact@v6
       if: always()
       with:
-        name: mcstas-artefacts-${{ matrix.os }}.${{ matrix.mpi }}.python-${{ matrix.python }}
-        path: "mcstas-${{ matrix.os }}.${{ matrix.mpi }}.python-${{ matrix.python }}_output.tgz"
+        name: mcstas-artefacts-${{ matrix.os }}.${{ matrix.mpi }}.conda-testsuite
+        path: "mcstas-${{ matrix.os }}.${{ matrix.mpi }}.conda-testsuite_output.tgz"
+
+    - name: Setup tmate session for manual debugging
+      uses: mxschmitt/action-tmate@v3
+      if: always() && (inputs.manual-debugging == true)
+      with:
+        limit-access-to-actor: true
+
+  compare:
+    name: mcstas-conda-testsuite-comparison
+    needs: build
+    if: always()
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        path: src
+
+    - name: Get conda dependency list
+      id: conda-deps
+      run: |
+           ./src/devel/bin/mccode-create-conda-yml -m mcstas -n mcstas -o dependencies.yml
+
+    - uses: mamba-org/setup-micromamba@v3
+      with:
+        environment-name: mcstas
+        environment-file: dependencies.yml
+
+    - name: Configure build and install mcstas
+      id: mcstas-install
+      run: |
+           # Only the Python tooling (mcviewtest, mcplotdiff-html, mcplot-html) is
+           # actually needed here - the diff/report generation is platform-agnostic
+           # regardless of which OS originally produced the monitor data - but we
+           # reuse the exact same install path as the build job for consistency,
+           # rather than maintaining a second, lighter-weight install mechanism.
+           ./src/devel/bin/mccode-build-conda -m mcstas -s $PWD/src -b $PWD/build_mcstas
+
+    - name: 'Download all platform test artifacts'
+      id: download
+      uses: actions/download-artifact@v6
+      with:
+        # matches mcstas-artefacts-ubuntu-latest.openmpi.conda-testsuite,
+        # mcstas-artefacts-macos-latest.openmpi.conda-testsuite,
+        # mcstas-artefacts-windows-latest.msmpi.conda-testsuite - by pattern
+        # rather than hardcoded names, so this keeps working if the build
+        # matrix gains/loses a platform
+        pattern: mcstas-artefacts-*.conda-testsuite
+        path: downloaded_artifacts
+
+    - name: 'Merge platform columns into one shared testdir'
+      id: merge
+      run: |
+           set -e
+           set -u
+           set -x
+
+           mkdir mcstas-nightly
+           REFLABEL=""
+
+           # Each platform's tarball contains exactly one label directory
+           # directly under run_test-suite/ (e.g.
+           # mcstas-3.99.99_mpi_x_2_ubuntu-latest_openmpi_<ncount>_Linux_<datetime>).
+           # mcviewtest treats each such directory as one comparison "column",
+           # so merging them as siblings under one shared testdir is all that's
+           # needed to make them comparable.
+           for tgz in downloaded_artifacts/*/*.tgz; do
+             work=$(mktemp -d)
+             tar xzf "$tgz" -C "$work"
+             artifact_name=$(basename "$(dirname "$tgz")")
+
+             for labeldir in "$work"/run_test-suite/*/; do
+               if [[ "$artifact_name" == *"ubuntu-latest"* ]]; then
+                 REFLABEL=$(basename "$labeldir")
+               fi
+               mv $labeldir mcstas-nightly/
+               done
+             done
+             rm -rf "$work"
+
+           if [ -z "$REFLABEL" ]; then
+             echo "WARNING: could not identify the ubuntu-latest/conda reference column"
+           else
+             echo "REFLABEL=$REFLABEL" >> "$GITHUB_ENV"
+             echo "Reference column: $REFLABEL"
+           fi
+
+    - name: 'Run mcviewtest across all platform columns'
+      id: viewtest
+      run: |
+           cd "$PWD/mcstas-nightly"
+           if [ -z "$REFLABEL" ]; then
+             mcviewtest --reflabel "$REFLABEL" --nobrowse
+           else
+             mcviewtest --reflabel --nobrowse
+           fi
+
+    - name: 'Tar mcstas-nightly output (all platform folders + comparison table)'
+      id: tar-package
+      if: always()
+      run: |
+           tar cvfz mcstas-conda-testsuite-comparison.tgz mcstas-nightly
+
+    - name: 'Upload comparison artifact'
+      id: comparison-upload
+      uses: actions/upload-artifact@v6
+      if: always()
+      with:
+        name: mcstas-testsuite-comparison
+        path: mcstas-conda-testsuite-comparison.tgz
 
     - name: Setup tmate session for manual debugging
       uses: mxschmitt/action-tmate@v3

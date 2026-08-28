@@ -83,6 +83,20 @@
 * The velocities <span class="latex">$vx, vy, vz$</span>
 * and the time <span class="latex">$t$</span>
 * 
+* McStas uses a sligthly modified version of tiny expressions that evaluate 
+* exponentials from right to left instead of the standard left to right.
+* Furthermore McStas has added two functions to tiny expressions. These are:
+* A heavy side function
+* hvs(variable, switch_point, large_val,small_val) which returns large val if 
+* variable > switch_point and small val otherwise.
+*
+* A gaussian distribution:
+*
+* gauss(A,sig,x), which evaluates to A*1/sqrt(2*PI)/sig*exp(-x^2/2/sig^2)
+*
+* An example using these can be found in the Test instrument for this component,
+* called Test_inhomogenous_process.instr. Example #9 implements a gaussian and a
+* heavyside function.
 * For more information on tiny expressions, see the link below.
 *
 *

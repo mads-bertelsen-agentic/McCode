@@ -22,13 +22,16 @@
  * misrepresented as being the original software.
  * 3. This notice may not be removed or altered from any source distribution.
  */
+// THIS VERSION OF TINYEXPR HAS BEEN MODIFIED TO BETTER SUIT THE NEEDS 
+// OF THE MCSTAS SOFTWARE PACKAGE
+
 
 /* COMPILE TIME OPTIONS */
 
 /* Exponentiation associativity:
 For a^b^c = (a^b)^c and -a^b = (-a)^b do nothing.
 For a^b^c = a^(b^c) and -a^b = -(a^b) uncomment the next line.*/
-/* #define TE_POW_FROM_RIGHT */
+#define TE_POW_FROM_RIGHT 
 
 /* Logarithms
 For log = base 10 log do nothing
@@ -153,6 +156,17 @@ static double ncr(double n, double r) {
     return result;
 }
 static double npr(double n, double r) {return ncr(n, r) * fac(r);}
+static double hvs(double x, double t, double a, double b) {
+    if (x>t){
+      return a;
+    }
+    return b;
+}
+static double gauss(double A, double sig, double x){
+  double inv_sqrt_2pi = 0.3989422804;
+  double result = A * inv_sqrt_2pi / sig * exp(-0.5 * (x * x) / (sig * sig));
+  return result;
+}
 
 #ifdef _MSC_VER
 #pragma function (ceil)
@@ -175,6 +189,8 @@ static const te_variable functions[] = {
     {"exp", exp,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
     {"fac", fac,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
     {"floor", floor,  TE_FUNCTION1 | TE_FLAG_PURE, 0},
+    {"gauss", gauss,  TE_FUNCTION3 | TE_FLAG_PURE, 0},
+    {"hvs", hvs,      TE_FUNCTION4 | TE_FLAG_PURE, 0},
     {"ln", log,       TE_FUNCTION1 | TE_FLAG_PURE, 0},
 #ifdef TE_NAT_LOG
     {"log", log,      TE_FUNCTION1 | TE_FLAG_PURE, 0},

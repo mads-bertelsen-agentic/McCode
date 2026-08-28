@@ -13,7 +13,7 @@
 * and comparison to incoherent process, and incoherent component.
 *
 * %Description
-* Test of 9 different setups. 
+* Test of different setups with the Inhomogenous_incoherent_process.
 * For all setups, the idea is the same. A source shines neutrons on the box,
 * and a detector placed right up on the side of the box, measures the 
 * incoherently scattered neutrons. 
@@ -41,6 +41,10 @@
 * nature of the two different processes, the one process curve becomes
 * continous (Inhomogenous_incoherent_process),
 * and the other discrete (Incoherent_process).
+* 
+* The 10th example plays with some more complex tiny expressions using the 
+* gaussian function and the heavyside function.
+*
 *
 *
 * %Example: sample=thin Detector: lin_det_I=0.007387
@@ -49,9 +53,10 @@
 * %Example: sample=inc_linear Detector: lin_det_I=0.017457
 * %Example: sample=inho_linear Detector: lin_det_I=0.017457
 * %Example: sample=inc_and_inho Detector: lin_det_I=0.017457
-* %Example: -n 1e5 sample=phonon Detector: lin_det_I=0.0174609
+* %Example: sample=phonon thick=0.001 Detector: lin_det_I=0.00505839
 * %Example: sample=inc_trans Detector: lin_det_I=0.081029
 * %Example: sample=inho_trans Detector: lin_det_I=0.081040
+* %Example: sample=gauss_heavy Detector: lin_det_I=0.0985658
 *
 *
 *
@@ -77,12 +82,14 @@ DECLARE
 %{
   double E_i;
   double eps;
+  int is_thin;
   int activate_inc;
   int activate_inho;
   int activate_inho_linear;
   int activate_inc_linear;
   int activate_inc_and_inho_linear;
   int activate_phonon;
+  int activate_gauss;
   double rot_samples;
 
 %}
@@ -95,6 +102,7 @@ INITIALIZE
 
   E_i = 25.3;
 
+  is_thin = 0;
   activate_inc = 0;
   activate_inho = 0;
   activate_inc_linear = 0;
@@ -103,7 +111,9 @@ INITIALIZE
   activate_phonon = 0;
   rot_samples = 0;
 
-  if (!strcmp("union_inc", sample)){
+  if (!strcmp("thin", sample)){
+    is_thin = 1;
+  } else if (!strcmp("union_inc", sample)){
     activate_inc = 1;
   } else if (!strcmp("union_inho", sample)){
     activate_inho = 1;
@@ -123,6 +133,13 @@ INITIALIZE
     rot_samples = 90;
     activate_inho_linear = 1;
     width = 0.01;
+  } else if (!strcmp("gauss_heavy", sample)){
+    rot_samples = 90;
+    activate_gauss = 1;
+    width = 0.01;
+  } else {
+    fprintf (stderr, "Unsupported instrument parameter value sample=\"%s\".\n", sample);
+    exit (-1);
   }
 
 %}
@@ -180,7 +197,7 @@ COMPONENT box_sample = Incoherent(
     zdepth=thick,
     sigma_inc = 5.08,
     sigma_abs = 5.08
-) WHEN (!str_comp((const char*)"thin", (const char*)sample))
+) WHEN (is_thin)
 AT (0, 0, 0) RELATIVE arm_sample
 ROTATED (0, 0, 0) RELATIVE arm_sample
 
@@ -503,12 +520,20 @@ COMPONENT inho_and_inc_box = Union_box(
   xwidth=width,
   yheight = 0.03,
   zdepth = thick,
-  material_string = "Inho_lin",
+  material_string = "inc_and_inho",
   number_of_activations = activate_inc_and_inho_linear
 ) AT (0,0, 0) RELATIVE arm_sample
 ROTATED (0, 0, 0) RELATIVE arm_sample
 
 // ============================ Inhomogenous + homogenous + phononsimple process
+COMPONENT inho_phonon_proc= Inhomogenous_incoherent_process(
+  sigma_expr = "9.58/2*((z+0.0045)*1000)", unit_cell_volume = 13.827,
+  // verbose=1,
+  number_of_sample_points = 2
+)
+AT (0,0,0) RELATIVE arm_sample
+
+
 
 COMPONENT phonon_proc = PhononSimple_process(
 
@@ -519,7 +544,7 @@ AT (0,0,0) RELATIVE arm_sample
 
 COMPONENT phonon_mat = Union_make_material(
     my_absorption = 100 * 5.08 / 13.827,
-    process_string = "only_inc_proc,only_inho_proc,phonon_proc"
+    process_string = "inho_phonon_proc,phonon_proc"
 )
 AT (0,0,0) RELATIVE PREVIOUS
 
@@ -533,7 +558,30 @@ COMPONENT phonon_box = Union_box(
 ) AT (0,0, 0) RELATIVE arm_sample
 ROTATED (0, 0, 0) RELATIVE arm_sample
 
+// ============================ Inhomogenous as a gaussian and heavy side
 
+COMPONENT gauss = Inhomogenous_incoherent_process(
+  sigma_expr = "5.08 - gauss(0.01,0.001,z+0.0025) + hvs(z,0,5,0)", unit_cell_volume = 13.827,
+  // verbose=1,
+  number_of_sample_points = 10
+)
+AT (0,0,0) RELATIVE arm_sample
+
+COMPONENT gauss_mat = Union_make_material(
+    my_absorption = 100 * 5.08 / 13.827,
+    process_string = "gauss"
+)
+AT (0,0,0) RELATIVE PREVIOUS
+
+COMPONENT  gauss_box = Union_box(
+  priority = 163,
+  xwidth=width,
+  yheight = 0.03,
+  zdepth = thick,
+  material_string = "gauss_mat",
+  number_of_activations = activate_gauss
+) AT (0,0, 0) RELATIVE arm_sample
+ROTATED (0, 0, 0) RELATIVE arm_sample
 
 
 
