@@ -1,9 +1,42 @@
 /*******************************************************************************
- * Shared NCrystal implementation for Union components.
- ******************************************************************************/
+*
+* This file is part of NCrystal (see https://mctools.github.io/ncrystal/)
+*
+* Copyright 2015-2022 NCrystal developers
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*
+* Original header text for NCrystal_sample.comp:
+* McStas sample component for the NCrystal scattering library. Find more
+* information at <a href="https://github.com/mctools/ncrystal/wiki">the NCrystal
+* wiki</a>. In particular, browse the available datafiles at <a
+* href="https://github.com/mctools/ncrystal/wiki/Data-library">Data-library</a>
+* and read about format of the configuration string expected in the "cfg"
+* parameter at <a
+* href="https://github.com/mctools/ncrystal/wiki/Using-NCrystal">Using-NCrystal</a>.
+*
+* NCrystal is available under the <a
+* href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2.0 license</a>.
+* Depending on the configuration choices, optional NCrystal modules under
+* different licenses might be enabled - see <a
+* href="https://github.com/mctools/ncrystal/wiki/About">About</a> for more
+* details.
+*
+* Shared NCrystal implementation for Union components.
+******************************************************************************/
 
-#ifndef NCRYSTAL_UNION_C
-#define NCRYSTAL_UNION_C
+#ifndef UNION_NCRYSTAL_C
+#define UNION_NCRYSTAL_C
 
 #if defined(WIN32) || defined(_WIN32)
 #include "NCrystal\\ncrystal.h"
