@@ -53,11 +53,7 @@ SETTING PARAMETERS()
 SHARE
 %{
 
-  #ifdef Union
-  #error "The Union_init component needs to be the first Union component!"
-  // printf("ERROR: The Union_init component needs to be the first Union component!\n");
-  // exit(1);
-  #else
+  #ifndef Union
   #define Union $Revision: 0.8 $
   %include "union-lib.c"
   #endif
@@ -159,4 +155,3 @@ FINALLY
 %}
 
 END
-
