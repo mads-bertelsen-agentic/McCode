@@ -77,9 +77,11 @@ set(WORK "${PROJECT_BINARY_DIR}/work")
 # Configure fallback script
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/mctest.in" "${WORK}/${P}test" @ONLY)
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/mcviewtest.in" "${WORK}/${P}viewtest" @ONLY)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/mcrtdiff.in" "${WORK}/${P}rtdiff" @ONLY)
 
 # Configure doc
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/mctest.md.in" "${WORK}/${P}test.md" @ONLY)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/mcrtdiff.md.in" "${WORK}/${P}rtdiff.md" @ONLY)
 
 
 # Main script, including rename mctest/mxtest
@@ -97,6 +99,16 @@ install(
   FILES "${PROJECT_SOURCE_DIR}/mcviewtest.py"
   DESTINATION "${DEST_TOOLDIR}/${TOOLS_NAME}"
   RENAME "${P}viewtest.py"
+  PERMISSIONS
+  OWNER_READ OWNER_WRITE OWNER_EXECUTE
+  GROUP_READ GROUP_EXECUTE
+  WORLD_READ WORLD_EXECUTE
+  )
+
+install(
+  FILES "${PROJECT_SOURCE_DIR}/mcrtdiff.py"
+  DESTINATION "${DEST_TOOLDIR}/${TOOLS_NAME}"
+  RENAME "${P}rtdiff.py"
   PERMISSIONS
   OWNER_READ OWNER_WRITE OWNER_EXECUTE
   GROUP_READ GROUP_EXECUTE
@@ -141,9 +153,25 @@ if(NOT WINDOWS)
     PROGRAMS "${WORK}/${P}viewtest"
     DESTINATION ${DEST_BINDIR}
   )
-  
+  install(
+    FILES "${WORK}/${P}rtdiff"
+    DESTINATION "${DEST_TOOLDIR}/${TOOLS_NAME}"
+    PERMISSIONS
+    OWNER_READ OWNER_WRITE OWNER_EXECUTE
+    GROUP_READ GROUP_EXECUTE
+    WORLD_READ WORLD_EXECUTE
+  )
+  install(
+    PROGRAMS "${WORK}/${P}rtdiff"
+    DESTINATION ${DEST_BINDIR}
+  )
+
   install(
     FILES "${WORK}/${P}test.md"
+    DESTINATION "${DEST_DATADIR_DOC}"
+  )
+  install(
+    FILES "${WORK}/${P}rtdiff.md"
     DESTINATION "${DEST_DATADIR_DOC}"
   )
 

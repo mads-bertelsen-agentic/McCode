@@ -1,0 +1,94 @@
+% @MCCODE_PREFIX@rtdiff(1)
+% @FLAVOR_UPPER@ @MCCODE_PARTICLE@ Ray Tracing Team
+% @MCCODE_DATE@
+
+# NAME
+
+**@MCCODE_PREFIX@rtdiff** - Compare per-instrument execution times across
+multiple runs/builds of the @MCCODE_PREFIX@test tool
+
+# SYNOPSIS
+
+**@MCCODE_PREFIX@rtdiff** [-h] [--reflabel REFLABEL] [--metric {runtime,compiletime,displaytime}] [--output OUTPUT] [--title TITLE] [--top TOP] [--nobrowse] [INPUT ...]
+
+# DESCRIPTION
+
+The tool **@MCCODE_PREFIX@rtdiff** reads the
+`testresults_<label>.json` files written out by **@MCCODE_PREFIX@test**
+(one per build/run) and compares the per-instrument timing values. It
+produces a total-runtime summary comparing builds and a per-instrument
+comparison showing absolute and relative differences against a chosen
+reference build, rendered both as a console table and as a
+self-contained HTML report (standard library only, no external
+dependencies).
+
+Each mctest run writes, inside its label directory:
+
+    <testdir>/<label>/testresults_<label>.json
+
+The JSON is a dictionary keyed by instrument display name plus a
+`_meta` key holding run metadata. Each instrument entry contains the
+timing fields **@MCCODE_PREFIX@rtdiff** compares:
+
+- `runtime` - seconds for the %Example test run (default metric)
+- `compiletime` - seconds spent compiling the instrument
+- `displaytime` - seconds for the mcdisplay run
+
+Values that are null, non-numeric, negative, or absent are treated as
+"no data" and shown as `n/a`; they are excluded from totals and
+differences and are never treated as zero.
+
+# OPTIONS
+
+**-h, --help**
+:   show this help message and exit
+
+**--reflabel REFLABEL**
+:   Reference build label for comparison. If unset, the oldest build
+    (by file modification time) is used.
+
+**--metric {runtime,compiletime,displaytime}**
+:   Which timing field to compare (default: `runtime`).
+
+**--output OUTPUT**
+:   Output HTML file (default: `./mcrtdiff_report.html`).
+
+**--title TITLE**
+:   Title for the generated report.
+
+**--top TOP**
+:   Show only the top-N most-changed instruments in the console table
+    (the HTML report always shows all).
+
+**--nobrowse**
+:   Do not open the generated report in a browser on exit.
+
+**INPUT ...**
+:   One or more inputs: a testdir root containing one subfolder per
+    build (the mctest layout), a single label directory holding a
+    `testresults_*.json` file, or a direct path to a
+    `testresults_*.json` file. The current directory is used if
+    omitted.
+
+# EXAMPLES
+
+Compare every build found inside an mctest results folder:
+:   `@MCCODE_PREFIX@rtdiff /path/to/mctest-results`
+
+Compare two specific label directories, using the first as reference:
+:   `@MCCODE_PREFIX@rtdiff --reflabel build-a build-a build-b`
+
+Compare compile times instead of run times:
+:   `@MCCODE_PREFIX@rtdiff --metric compiletime /path/to/mctest-results`
+
+# FILES
+
+/usr/share/@FLAVOR@/tools/Python/@MCCODE_PREFIX@test/@MCCODE_PREFIX@rtdiff.py
+
+# AUTHORS
+
+@MCCODE_NAME@ Team (@FLAVOR@.org)
+
+# SEE ALSO
+
+@FLAVOR@(1), @MCCODE_PREFIX@test(1), @MCCODE_PREFIX@viewtest(1), @MCCODE_PREFIX@run(1)
